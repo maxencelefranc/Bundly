@@ -1,0 +1,114 @@
+# Codemagic configuration for the Bundly (Expo) project
+# - This workflow runs EAS builds for Android and iOS on pushes to `main` (and PRs).
+# - Set secure environment variables in Codemagic UI before using:
+#     - EAS_TOKEN  (required) - your EAS CLI token
+#     - EXPO_TOKEN (optional) - legacy Expo token if needed
+#     - APPLE_ID and other Apple secrets if you plan to manage iOS credentials in CI
+# - Adjust `EAS_BUILD_PROFILE` if you use other profiles in eas.json
+
+workflows:
+  build_eas:
+    name: Build (EAS) Android & iOS
+    triggering:
+      events:
+        - push
+        - pull_request
+      branches:
+        - main
+    environment:
+      # Node version used on the build VM
+      node: "18.16.0"
+      # Use default CocoaPods ; Codemagic will install CocoaPods on macOS runners
+      cocoapods: default
+      vars:
+        # Change this to the profile name defined in your `eas.json` (e.g. production, preview)
+        EAS_BUILD_PROFILE: production
+        # NOTE: add secure vars (EAS_TOKEN, EXPO_TOKEN, APPLE_ID, etc.) in Codemagic UI
+    scripts:
+      - name: Checkout
+        script: |
+          # the repository is checked out by Codemagic automatically
+          echo "Checked out ${CM_BRANCH} @ ${CM_SHA}"
+
+      - name: Install dependencies
+        script: |
+          set -e
+          # prefer lockfile install, fallback to legacy-peer-deps if needed
+          if [ -f package-lock.json ]; then
+            npm ci || npm install --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps
+          fi
+
+      - name: Cache node_modules (optional)
+        script: |
+          echo "Caching node_modules to speed up subsequent builds"
+          # Codemagic has caching configuration in the UI; leave this line as a marker
+          true
+
+      - name: Install global CLI tools
+        script: |
+          set -e
+          npm install -g eas-cli@latest
+          npm install -g expo-cli@latest || true
+          eas --version || true
+
+      - name: EAS login (token)
+        script: |
+          set -e
+          if [ -z "$EAS_TOKEN" ]; then
+            echo "EAS_TOKEN is not set. Set it as a secure environment variable in Codemagic."
+            exit 1
+          fi
+          eas login --token "$EAS_TOKEN"
+
+      - name: Optional: run lint/tests
+        script: |
+          set -e
+          if npm run | grep -q "lint"; then
+            npm run lint || true
+          fi
+          if npm run | grep -q "test"; then
+            npm test || true
+          fi
+
+      - name: Prepare (optional prebuild)
+        script: |
+          set -e
+          # If you use prebuild steps, run them here (e.g. generating assets)
+          if [ -f ./scripts/prebuild.sh ]; then
+            bash ./scripts/prebuild.sh
+          fi
+
+      - name: EAS build — Android
+        script: |
+          set -e
+          echo "Starting EAS Android build (profile: $EAS_BUILD_PROFILE)"
+          eas build --platform android --non-interactive --profile "$EAS_BUILD_PROFILE"
+
+      - name: EAS build — iOS
+        script: |
+          set -e
+          echo "Starting EAS iOS build (profile: $EAS_BUILD_PROFILE)"
+          eas build --platform ios --non-interactive --profile "$EAS_BUILD_PROFILE"
+
+    artifacts:
+      - '**/*.apk'
+      - '**/*.aab'
+      - '**/*.ipa'
+
+    publishing:
+      # Example: send email notifications on success/failure (customize recipients in Codemagic UI)
+      email:
+        recipients:
+          - "your@email.invalid"
+        on_build_success: true
+        on_build_failed: true
+
+# Notes for you:
+# - Codemagic will run this YAML on its Linux/macOS runners; EAS builds are executed in the cloud,
+#   so Codemagic will trigger EAS and the final binary/artifact will be available through EAS.
+# - Ensure you **do not commit secrets** (EAS_TOKEN, APPLE_CERT, etc.) — add them as secure
+#   environment variables in Codemagic project settings.
+# - If you prefer building with Codemagic-native Android/iOS pipelines (without EAS), tell me
+#   and I can provide an alternate `codemagic.yaml` that runs Gradle/Xcode builds directly.
