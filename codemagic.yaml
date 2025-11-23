@@ -62,7 +62,7 @@ workflows:
           fi
           eas login --token "$EAS_TOKEN"
 
-      - name: Optional: run lint/tests
+      - name: "Optional: run lint/tests"
         script: |
           set -e
           if npm run | grep -q "lint"; then
