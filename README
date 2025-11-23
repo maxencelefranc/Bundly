@@ -1,0 +1,331 @@
+<div align="center">
+
+# 💞 **Bondly : Notre App Couple**
+
+## *Parce qu’aimer, c’est aussi s’organiser ensemble 💕*
+
+![Static Badge](https://img.shields.io/badge/React_Native-Mobile_App-61DAFB?logo=react&logoColor=white)
+![Static Badge](https://img.shields.io/badge/Supabase-Backend-green?logo=supabase)
+![Static Badge](https://img.shields.io/badge/Expo-Deployed-blue?logo=expo)
+![Static Badge](https://img.shields.io/badge/License-MIT-yellow)
+![Static Badge](https://img.shields.io/badge/Status-In_Development-orange)
+
+</div>
+
+---
+
+## 🧠 **Concept**
+
+**Notre App Couple** est une application mobile conçue pour aider les couples à :  
+💬 mieux communiquer,  
+🧘‍♀️ prendre soin de leur santé et de leur bien-être,  
+📅 s’organiser ensemble au quotidien,  
+🐾 et même gérer leur petit compagnon à quatre pattes !  
+
+Tout est pensé pour renforcer la compréhension mutuelle, simplifier la logistique de la vie à deux, et apporter une touche d’amour et de bienveillance dans chaque interaction.
+
+---
+
+## 🌈 **Aperçu global**
+
+| Module | Description rapide |
+|:--|:--|
+| 🏠 **Dashboard** | Vue d’ensemble personnalisée du couple : humeur, tâches, santé, et événements à venir. |
+| 🐱 **Pet Management** | Gestion complète du chat : repas, vaccins, suivi du poids et carnet vétérinaire. |
+| 🌸 **Cycle & Santé** | Suivi du cycle menstruel, des traitements thyroïdiens, et des rendez-vous médicaux. |
+| 😊 **Journal d’émotions** | Enregistrement quotidien des humeurs et alertes de soutien au partenaire. |
+| ✅ **Tâches & Organisation** | Répartition équitable, rappels automatiques et historique partagé. |
+| 🛒 **Liste de courses** | Liste collaborative, budget commun, et notifications en temps réel. |
+| 🧃 **Anti-Gaspillage Alimentaire** | Gestion des dates de péremption et alertes intelligentes pour éviter le gaspillage. |
+| 📅 **Dates importantes** | Anniversaires, surprises et milestones du couple. |
+| 🔔 **Notifications intelligentes** | Rappels personnalisés, urgences, et actions rapides depuis la notif. |
+
+---
+
+## ⚙️ **Stack technique**
+
+| Composant | Technologie |
+|------------|-------------|
+| 💻 **Front-end** | [React Native (Expo)](https://expo.dev/) |
+| 🧩 **Back-end** | [Supabase](https://supabase.io/) – Auth, Realtime, PostgreSQL |
+| 🔐 **Authentification** | Supabase Auth (avec `couple_id` partagé) |
+| ☁️ **Stockage** | Supabase Storage |
+| 📲 **Notifications push** | Expo Notifications + Realtime |
+| 🚀 **CI/CD** | Expo EAS + GitHub Actions |
+
+---
+
+## 🎨 **Design & UX**
+
+✨ **Design mobile-first**, fluide et chaleureux  
+🌗 Thème clair/sombre dynamique  
+🎡 Navigation à 9 onglets (bottom tabs)  
+💫 Cartes animées et gradients doux  
+♿ Accessibilité complète (VoiceOver, ARIA)
+
+> L’expérience utilisateur est pensée pour être simple, fluide et bienveillante.  
+> Le couple doit se sentir “accompagné”, pas “surveillé”.
+
+---
+
+## 🗄️ **Base de données (Supabase)**
+
+Chaque utilisateur est lié à un `couple_id`, ce qui permet :
+
+- 🔄 une **synchronisation temps réel** entre partenaires,  
+- 🔐 une **confidentialité complète** (données chiffrées),  
+- 💬 des **interactions contextuelles** (humeurs, notifications, tâches, etc.).
+
+**Tables principales :**
+
+- users  
+- couples  
+- medications  
+- moods  
+- tasks  
+- appointments  
+- pets  
+- cycles  
+- shopping_items  
+- food_items 🍞 *(nouveau)*  
+- important_dates  
+- notifications  
+- history_*
+
+Chaque enregistrement lié à un couple partage un même `couple_id` pour la synchronisation et la confidentialité.
+
+---
+
+## 📈 **Fonctionnalités clés**
+
+### 💊 Suivi santé
+- Gestion des traitements (p.ex. thyroïde), posologies et rappels  
+- Historique d’observance et alertes au partenaire  
+
+### 💞 Communication émotionnelle
+- Journal d’humeur quotidien (échelle + note)  
+- Résumé automatique envoyé au partenaire  
+- Graphiques et détection de patterns / alertes de soutien  
+
+### 🧹 Vie quotidienne
+- Répartition des tâches, système de points/rotation  
+- Liste de courses partagée et suivi budgétaire  
+- Historique et analytics simples  
+
+### 🐾 Gestion du chat
+- Carnet vétérinaire, planning repas, suivi du poids  
+- Galerie photos organisée et rappels vaccinaux  
+
+### 🧃 Gestion anti-gaspillage alimentaire
+- Ajout rapide de produits (manuel ou via scan code-barres)  
+- Catégories : frigo, congélateur, placard  
+- Alerte automatique avant péremption (personnalisable)  
+- Codes couleur selon l’état : 🟩 OK | 🟨 Bientôt périmé | 🟥 Périmé  
+- Historique des produits consommés / jetés  
+- Suggestion automatique pour la liste de courses  
+- Synchronisation en temps réel entre partenaires  
+
+#### **Structure Supabase (`food_items`)**
+
+| Colonne | Type | Description |
+|:--|:--|:--|
+| `id` | `uuid` | Identifiant unique |
+| `couple_id` | `uuid` | Identifie le couple |
+| `name` | `text` | Nom du produit |
+| `category` | `text` | (ex: laitier, fruit, boisson…) |
+| `location` | `text` | (frigo, placard, congélateur…) |
+| `expiration_date` | `date` | Date limite de consommation |
+| `quantity` | `int` | Optionnel |
+| `status` | `text` | (`fresh`, `soon`, `expired`) |
+| `created_at` | `timestamp` | Date d’ajout |
+| `updated_at` | `timestamp` | Dernière modification |
+
+---
+
+## 🔔 **Notifications intelligentes**
+
+- Priorisation : **Urgent / Normal / Doux**  
+- Badges dynamiques et actions rapides (Marquer fait, Reporter)  
+- Mode “Calme” / Week-end romantique pour réduire les interruptions  
+- Alertes automatiques pour les produits proches de la date limite  
+
+---
+
+## 🔒 **Sécurité & confidentialité**
+
+- Authentification via Supabase Auth  
+- Données sensibles chiffrées côté client avant stockage  
+- Sauvegardes cloud et droit à la suppression complète (RGPD)  
+- Accès et partage limités au `couple_id` uniquement  
+
+---
+
+## 🧱 **Roadmap (suggestion)**
+
+| Étape | Fonctionnalité | Statut |
+|:--|:--|:--|
+| 1️⃣ | Auth & couple_id | ✅ Terminé |
+| 2️⃣ | Dashboard & notifications | 🚧 En cours |
+| 3️⃣ | Médicaments & émotions | ⏳ À venir |
+| 4️⃣ | Tâches, courses & anti-gaspillage | ⏳ À venir |
+| 5️⃣ | Chat & calendrier | ⏳ À venir |
+| 6️⃣ | Bêta publique | 🎯 Objectif Q1 2026 |
+
+---
+
+## 🌟 **Évolutions futures**
+
+- 💬 Messagerie émotionnelle intégrée  
+- ❤️ Défis & gamification pour renforcer la complicité  
+- 🧠 IA d’analyse (corrélations humeur ↔ activités ↔ alimentation)  
+- 🌍 Multi-langue et personnalisation avancée  
+- 📸 Reconnaissance automatique des aliments via photo / IA  
+ - 🚗 Rappels intelligents d’entretiens véhicule (date & kilométrage)  
+ - 🧠 Parsing IA des plannings (texte libre / photo ➜ shifts)  
+ - 🤖 Suggestions croisées (disponibilités communes ➜ activités / tâches)  
+
+---
+
+## 👨‍💻 **Développeur**
+
+Créé avec ❤️ par **Johanna Gillet & Maxence Lefranc**
+
+---
+
+## 🚀 Démarrage (Android Studio émulateur)
+
+Prérequis:
+- Node 18+ et npm
+- Expo CLI (via `npx`)
+- Android Studio + un émulateur Android démarré
+
+1) Copier `.env.example` vers `.env` et renseigner vos variables Supabase:
+	- `SUPABASE_URL`
+	- `SUPABASE_ANON_KEY`
+
+2) Installer les dépendances (une seule fois):
+
+```powershell
+npm install
+npx expo install
+```
+
+3) Lancer l’application sur l’émulateur Android:
+
+```powershell
+npx expo start --android
+```
+
+4) Côté Supabase, exécuter les scripts SQL du dossier `supabase/sql` dans l’ordre suivant:
+	- `00_extensions.sql`
+	- `01_couples.sql` (ou `02_couples.sql` si l’ancien nom existe)
+	- `02_profiles.sql` (ou `01_profiles.sql` si l’ancien nom existe)
+	- `06_storage_avatars.sql` (bucket `avatars` + policies)
+	- `03_food_items.sql`
+	- `04_vehicles.sql`
+	- `05_schedules.sql`
+
+Après avoir créé les tables, allez dans Settings ➜ API de votre projet Supabase et cliquez sur “Refresh Schema Cache” (ou redémarrez PostgREST) si vous voyez des erreurs côté app.
+
+> Astuce: créez un utilisateur via l’écran d’inscription, puis créez ou rejoignez un couple pour activer la synchro.
+
+### 🧪 Test rapide Anti-gaspi
+
+1. Allez dans l’onglet “Anti-gaspi”
+2. Ajoutez un produit avec une date de péremption proche pour voir le statut passer en 🟨 `soon` ou 🟥 `expired`.
+
+---
+
+## 🆘 Dépannage rapide
+
+"Could not find the table 'public.profiles' in the schema cache"
+
+- Vérifiez que vous avez bien exécuté `01_couples.sql` AVANT `02_profiles.sql` (l’ordre compte à cause de la clé étrangère).
+- Exécutez ensuite `06_storage_avatars.sql` si vous souhaitez utiliser l’avatar de profil.
+- Allez dans Supabase ➜ Settings ➜ API ➜ “Refresh Schema Cache”.
+- Redémarrez l’app Expo.
+
+Si le problème persiste, ouvrez l’éditeur SQL Supabase et lancez
+
+```sql
+select * from public.profiles limit 1;
+```
+
+pour vérifier l’existence de la table.
+
+## 🛠️ Dépendances principales
+
+- Expo + expo-router (navigation par onglets)
+- Supabase (`@supabase/supabase-js`) + AsyncStorage (persistance de session)
+- UI simple maison (ThemedText, Card, Button)
+- ESLint + Prettier
+
+---
+
+## 📂 Structure du projet (extrait)
+
+- `app/` — Routes (Expo Router)
+  - `(auth)/` — Connexion, inscription, configuration du couple
+  - `(tabs)/` — 9 onglets principaux (Dashboard, Chat, Cycle, Humeurs, Tâches, Courses, Anti-gaspi, Dates, Notifs)
+- `src/lib/` — Supabase + AuthProvider
+- `src/features/antiwaste/` — CRUD des aliments et logique de statut
+- `src/features/vehicles/` — Véhicules, entretiens & journal (logs)
+- `src/features/schedules/` — Planning travail + imports texte (pré-IA)
+- `supabase/sql/` — Schéma SQL et RLS
+
+---
+
+## 🚗 Module Véhicules (Nouveau)
+
+Schéma: `supabase/sql/04_vehicles.sql`
+
+| Table | Rôle |
+|-------|------|
+| `vehicles` | Métadonnées (marque, modèle, plaque, kilométrage, assurances) |
+| `vehicle_maintenances` | Entretien planifié ou récurrent (type, intervalle km/date, prochaine échéance) |
+| `vehicle_logs` | Journal rapide (plein, réparation, contrôle technique, coût) |
+
+Objectifs UI (prochain sprint):
+- Liste des véhicules avec jauge kilométrage & badge “Prochain entretien”
+- Détail véhicule ➜ historique / entretiens / actions rapides
+- Calcul dynamique statut entretien: `ok`, `soon`, `overdue`
+- Notifications de rappel (km ou date)
+
+---
+
+## 🗓️ Module Planning Travail (Nouveau)
+
+Schéma: `supabase/sql/05_schedules.sql`
+
+| Table | Rôle |
+|-------|------|
+| `schedules` | Créneaux normalisés (date, start_time, end_time, role, location) |
+| `schedule_imports` | Texte brut collé avant parsing IA (status: pending / parsed / error) |
+
+Fonctionnalités prévues:
+- Vue semaine compacte (lundi ➜ dimanche) + total heures
+- Import texte (coller planning) ➜ pré-parsing regex initial ➜ future IA
+- Fusion des plannings des deux partenaires pour détecter créneaux communs
+- Suggestions automatiques (activité couple / tâches à caser)
+
+Étapes IA (later): Edge Function + LLM pour extraction fiable (heures, rôle, lieu).
+
+---
+
+## 🔧 Prochaines étapes techniques
+
+1. Écrans `(tabs)/vehicles` & `(tabs)/schedules` (listes + placeholders).
+2. Composants UI: Badge entretien (couleur), timeline logs, vue semaine planning.
+3. Logique calcul “due soon / overdue” selon km ou date prochaine.
+4. Import planning ➜ parsing regex ➜ stocker dans `schedule_imports`.
+5. Notifications pour entretiens imminents & début de shift.
+6. README: ajouter exemples d’API une fois les écrans intégrés.
+
+---
+
+---
+
+## ⚠️ Notes
+
+- Les icônes et splash sont génériques par défaut; vous pouvez ajouter vos images dans `assets/` et les référencer dans `app.config.ts`.
+- Pour les notifications push, l’intégration Expo est prête côté dépendances; l’implémentation sera réalisée dans une itération suivante.
