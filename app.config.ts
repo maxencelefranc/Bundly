@@ -35,5 +35,6 @@ export default ({ config }: { config: any }): any => ({
     // Dev convenience credentials (public) for quick login
     DEV_EMAIL: process.env.EXPO_PUBLIC_DEV_EMAIL,
     DEV_PASSWORD: process.env.EXPO_PUBLIC_DEV_PASSWORD,
+    eas: { projectId: 'ff05c9a5-7776-42d9-864a-18f51c49b3df' }
   }
 });
