@@ -51,16 +51,19 @@ workflows:
           npm install -g expo-cli@latest || true
           eas --version || true
 
-      - name: Set EXPO_TOKEN from secure EAS_TOKEN
+      - name: Set EXPO_TOKEN from secure EAS_TOKEN (or use existing EXPO_TOKEN)
         script: |
           set -e
-          # Codemagic provides the secure variable EAS_TOKEN; eas/eas-cli reads EXPO_TOKEN.
-          if [ -z "$EAS_TOKEN" ]; then
-            echo "EAS_TOKEN is not set. Set it as a secure environment variable in Codemagic."
+          # Prefer EAS_TOKEN (secure variable) and fall back to EXPO_TOKEN if already provided.
+          if [ -n "$EAS_TOKEN" ]; then
+            export EXPO_TOKEN="$EAS_TOKEN"
+            echo "EXPO_TOKEN set from secure EAS_TOKEN (will be used by eas/eas-cli)"
+          elif [ -n "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN already defined in environment; using existing value"
+          else
+            echo "EAS_TOKEN / EXPO_TOKEN is not set. Set EAS_TOKEN as a secure environment variable in Codemagic or define EXPO_TOKEN directly."
             exit 1
           fi
-          export EXPO_TOKEN="$EAS_TOKEN"
-          echo "EXPO_TOKEN set from secure EAS_TOKEN (will be used by eas/eas-cli)"
 
       - name: "Optional: run lint/tests"
         script: |
