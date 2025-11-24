@@ -92,11 +92,24 @@ workflows:
           echo "Starting EAS Android build (profile: $EAS_BUILD_PROFILE)"
           eas build --platform android --non-interactive --profile "$EAS_BUILD_PROFILE"
 
-      - name: EAS build — iOS
+      - name: EAS build — iOS (conditional)
         script: |
           set -e
-          echo "Starting EAS iOS build (profile: $EAS_BUILD_PROFILE)"
-          eas build --platform ios --non-interactive --profile "$EAS_BUILD_PROFILE"
+          echo "Checking for iOS credentials..."
+          # If we have an App Store Connect key or a base64-encoded provisioning/p12, proceed.
+          if [ -n "$APP_STORE_CONNECT_KEY_BASE64" ] || [ -n "$IOS_DISTRIBUTION_P12_BASE64" ] || [ -n "$EXPO_APPLE_TEAM_ID" ]; then
+            echo "iOS credentials found — starting EAS iOS build (profile: $EAS_BUILD_PROFILE)"
+            # If an App Store Connect key is provided as base64, decode it for eas to use
+            if [ -n "$APP_STORE_CONNECT_KEY_BASE64" ]; then
+              echo "$APP_STORE_CONNECT_KEY_BASE64" | base64 -d > AuthKey.p8
+              export APP_STORE_CONNECT_KEY_PATH="$(pwd)/AuthKey.p8"
+              echo "Decoded App Store Connect key to $APP_STORE_CONNECT_KEY_PATH"
+            fi
+            eas build --platform ios --non-interactive --profile "$EAS_BUILD_PROFILE"
+          else
+            echo "No iOS credentials provided (APP_STORE_CONNECT_KEY_BASE64 or IOS_DISTRIBUTION_P12_BASE64). Skipping iOS build."
+            exit 0
+          fi
 
     artifacts:
       - '**/*.apk'
