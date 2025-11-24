@@ -17,6 +17,10 @@ export default ({ config }: { config: any }): any => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.example.appcouple'
+    ,
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false
+    }
   },
   android: {
     package: 'com.example.appcouple',
