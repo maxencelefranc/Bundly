@@ -1,58 +1,100 @@
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import type * as NotificationsModule from "expo-notifications";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+type NotificationsApi = typeof NotificationsModule;
+
+// `expo-notifications` throws at import time on Android in Expo Go (removed
+// from Expo Go since SDK 53 — a development build is required there). A
+// static top-level `import` can't be caught by a try/catch in this file,
+// since Metro/Babel hoists it above everything else. Loading it lazily via
+// `require`, wrapped in try/catch, lets every reminder call degrade to a
+// silent no-op instead of crashing every screen that touches dates,
+// treatments, or subscriptions.
+let cachedModule: NotificationsApi | null | undefined;
+
+function getNotifications(): NotificationsApi | null {
+  if (cachedModule !== undefined) return cachedModule;
+
+  if (Platform.OS === "web") {
+    cachedModule = null;
+    return null;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("expo-notifications") as NotificationsApi;
+    mod.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+    cachedModule = mod;
+  } catch {
+    cachedModule = null;
+  }
+
+  return cachedModule;
+}
 
 let permissionRequested = false;
 
 export async function ensureNotificationPermission(): Promise<boolean> {
-  if (Platform.OS === "web") return false;
+  const Notifications = getNotifications();
+  if (!Notifications) return false;
 
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("reminders", {
-      name: "Rappels",
-      importance: Notifications.AndroidImportance.DEFAULT,
+  try {
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("reminders", {
+        name: "Rappels",
+        importance: Notifications.AndroidImportance.DEFAULT,
+      });
+    }
+
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status === "granted") return true;
+    if (permissionRequested) return false;
+    permissionRequested = true;
+
+    const { status: newStatus } = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowBadge: true, allowSound: true },
     });
+    return newStatus === "granted";
+  } catch {
+    return false;
   }
-
-  const { status } = await Notifications.getPermissionsAsync();
-  if (status === "granted") return true;
-  if (permissionRequested) return false;
-  permissionRequested = true;
-
-  const { status: newStatus } = await Notifications.requestPermissionsAsync({
-    ios: { allowAlert: true, allowBadge: true, allowSound: true },
-  });
-  return newStatus === "granted";
 }
 
 async function schedule(
   identifier: string,
   title: string,
   body: string,
-  trigger: Notifications.NotificationTriggerInput
+  trigger: NotificationsModule.NotificationTriggerInput
 ): Promise<void> {
-  if (Platform.OS === "web") return;
+  const Notifications = getNotifications();
+  if (!Notifications) return;
+
   const granted = await ensureNotificationPermission();
   if (!granted) return;
 
-  await cancel(identifier);
-  await Notifications.scheduleNotificationAsync({
-    identifier,
-    content: { title, body },
-    trigger: Platform.OS === "android" ? { ...trigger, channelId: "reminders" } : trigger,
-  });
+  try {
+    await cancel(identifier);
+    await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: { title, body },
+      trigger: Platform.OS === "android" ? { ...trigger, channelId: "reminders" } : trigger,
+    });
+  } catch {
+    // Best-effort: a reminder that fails to schedule shouldn't block the
+    // action (adding a date/treatment/subscription) that triggered it.
+  }
 }
 
 export async function cancel(identifier: string): Promise<void> {
-  if (Platform.OS === "web") return;
+  const Notifications = getNotifications();
+  if (!Notifications) return;
   await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
 }
 
@@ -70,9 +112,9 @@ export async function scheduleDateReminder(
   if (reminderDate.getTime() <= Date.now()) return;
 
   await schedule(`date-${id}`, "💝 Date qui approche", `${title} — dans ${reminderDays} jours`, {
-    type: Notifications.SchedulableTriggerInputTypes.DATE,
+    type: "date",
     date: reminderDate,
-  });
+  } as NotificationsModule.NotificationTriggerInput);
 }
 
 export async function cancelDateReminder(id: string): Promise<void> {
@@ -99,7 +141,7 @@ export async function scheduleSubscriptionReminder(
     `sub-${id}`,
     "💳 Renouvellement à venir",
     `${name} se renouvelle dans ${SUBSCRIPTION_REMINDER_DAYS} jours`,
-    { type: Notifications.SchedulableTriggerInputTypes.DATE, date: reminderDate }
+    { type: "date", date: reminderDate } as NotificationsModule.NotificationTriggerInput
   );
 }
 
@@ -120,10 +162,10 @@ export async function scheduleTreatmentReminder(
   if (Number.isNaN(hour) || Number.isNaN(minute)) return;
 
   await schedule(`treatment-${id}`, "💊 Rappel traitement", `C'est l'heure de prendre : ${name}`, {
-    type: Notifications.SchedulableTriggerInputTypes.DAILY,
+    type: "daily",
     hour,
     minute,
-  });
+  } as NotificationsModule.NotificationTriggerInput);
 }
 
 export async function cancelTreatmentReminder(id: string): Promise<void> {
