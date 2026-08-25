@@ -1,6 +1,5 @@
-import { ExpoConfig, ConfigContext } from "expo/config";
-
-export default ({ config }: ConfigContext): ExpoConfig => ({
+/** @type {import('expo/config').ExpoConfig} */
+module.exports = ({ config }) => ({
   ...config,
   name: "Bundly",
   slug: "bundly",
@@ -50,8 +49,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   experiments: {
     typedRoutes: true,
   },
+  owner: "drpineut",
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    eas: {
+      projectId: "3458881b-3c77-486b-aea8-2bc751ec9801",
+    },
   },
 });
