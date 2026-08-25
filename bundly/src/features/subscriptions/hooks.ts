@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchSubscriptions, addSubscription, deleteSubscription, type Subscription } from "./api";
 import { useAppStore } from "@/stores/appStore";
+import { scheduleSubscriptionReminder, cancelSubscriptionReminder } from "@/lib/notifications";
 
 export function useSubscriptions() {
   const couple = useAppStore((s) => s.couple);
@@ -20,6 +21,9 @@ export function useAddSubscription() {
     mutationFn: async (sub: Pick<Subscription, "name"> & Partial<Subscription>) => {
       const result = await addSubscription(couple!.id, sub);
       await awardXP("sub_add", "subscriptions");
+      if (result.renewal_date) {
+        scheduleSubscriptionReminder(result.id, result.name, result.renewal_date).catch(() => {});
+      }
       return result;
     },
     onSuccess: () => {
@@ -33,7 +37,10 @@ export function useDeleteSubscription() {
   const couple = useAppStore((s) => s.couple);
 
   return useMutation({
-    mutationFn: deleteSubscription,
+    mutationFn: async (id: string) => {
+      await deleteSubscription(id);
+      await cancelSubscriptionReminder(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subscriptions", couple?.id] });
     },

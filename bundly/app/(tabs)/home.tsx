@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAppStore } from "@/stores/appStore";
 import { useTheme } from "@/stores/themeStore";
+import { useWeeklyGoalStore, WEEKLY_GOAL_STEP } from "@/stores/weeklyGoalStore";
 import { COUPLE_LEVELS } from "@/types";
 import { useTasks } from "@/features/tasks/hooks";
 import { useShoppingList, useShoppingItems } from "@/features/shopping/hooks";
@@ -78,6 +79,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { profile, partner, coupleXP, couple } = useAppStore();
+  const weeklyGoal = useWeeklyGoalStore((s) => (couple?.id ? s.getGoal(couple.id) : 200));
+  const adjustWeeklyGoal = useWeeklyGoalStore((s) => s.adjustGoal);
 
   const { data: tasks } = useTasks();
   const { data: shoppingList } = useShoppingList();
@@ -588,6 +591,75 @@ export default function HomeScreen() {
                 </View>
               ))}
             </View>
+          </View>
+
+          {/* ── Objectif hebdo ── */}
+          <View
+            style={{
+              backgroundColor: theme.bgCard,
+              borderRadius: 18,
+              padding: 16,
+              marginBottom: 16,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.04,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "600", color: theme.text }}>
+                Objectif de la semaine
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <TouchableOpacity
+                  onPress={() => couple?.id && adjustWeeklyGoal(couple.id, -WEEKLY_GOAL_STEP)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="remove-circle-outline" size={20} color={theme.textMuted} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, fontWeight: "500" }}>
+                  {weeklyGoal} XP
+                </Text>
+                <TouchableOpacity
+                  onPress={() => couple?.id && adjustWeeklyGoal(couple.id, WEEKLY_GOAL_STEP)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={theme.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View
+              style={{
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: theme.bgSecondary,
+                overflow: "hidden",
+                marginBottom: 6,
+              }}
+            >
+              <View
+                style={{
+                  height: "100%",
+                  borderRadius: 4,
+                  backgroundColor:
+                    (coupleXP?.weekly_xp ?? 0) >= weeklyGoal ? "#22C55E" : theme.brand,
+                  width: `${Math.min(((coupleXP?.weekly_xp ?? 0) / weeklyGoal) * 100, 100)}%`,
+                }}
+              />
+            </View>
+            <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+              {(coupleXP?.weekly_xp ?? 0) >= weeklyGoal
+                ? "Objectif atteint cette semaine 🎉"
+                : `${coupleXP?.weekly_xp ?? 0} / ${weeklyGoal} XP à deux`}
+            </Text>
           </View>
 
           {/* ── Partenaire ── */}

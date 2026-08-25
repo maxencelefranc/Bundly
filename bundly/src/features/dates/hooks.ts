@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchDates, addDate, deleteDate, type ImportantDate } from "./api";
 import { useAppStore } from "@/stores/appStore";
+import { scheduleDateReminder, cancelDateReminder } from "@/lib/notifications";
 
 export function useDates() {
   const couple = useAppStore((s) => s.couple);
@@ -20,6 +21,9 @@ export function useAddDate() {
     mutationFn: async (item: Pick<ImportantDate, "title" | "date"> & Partial<ImportantDate>) => {
       const result = await addDate(couple!.id, item);
       await awardXP("date_add", "dates");
+      scheduleDateReminder(result.id, result.title, result.date, result.reminder_days).catch(
+        () => {}
+      );
       return result;
     },
     onSuccess: () => {
@@ -33,7 +37,10 @@ export function useDeleteDate() {
   const couple = useAppStore((s) => s.couple);
 
   return useMutation({
-    mutationFn: deleteDate,
+    mutationFn: async (id: string) => {
+      await deleteDate(id);
+      await cancelDateReminder(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dates", couple?.id] });
     },

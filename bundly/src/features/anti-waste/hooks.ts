@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchFoodItems, addFoodItem, markConsumed, deleteFoodItem, type FoodItem } from "./api";
 import { useAppStore } from "@/stores/appStore";
+import {
+  getOrCreateActiveList,
+  fetchItems as fetchShoppingItems,
+  addItem as addShoppingItem,
+} from "@/features/shopping/api";
 
 export function useFoodItems() {
   const couple = useAppStore((s) => s.couple);
@@ -30,15 +35,29 @@ export function useAddFoodItem() {
 
 export function useMarkConsumed() {
   const queryClient = useQueryClient();
-  const { couple, awardXP } = useAppStore();
+  const { couple, profile, awardXP } = useAppStore();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
       await markConsumed(id);
       await awardXP("food_consumed", "anti-waste");
+
+      // Consumed = used up, so it's a natural shopping-list candidate. Skip
+      // it if it's already sitting in the list unpicked to avoid duplicates.
+      if (couple?.id && profile?.id) {
+        const list = await getOrCreateActiveList(couple.id);
+        const existing = await fetchShoppingItems(list.id);
+        const alreadyListed = existing.some(
+          (i) => !i.picked && i.text.trim().toLowerCase() === name.trim().toLowerCase()
+        );
+        if (!alreadyListed) {
+          await addShoppingItem(list.id, profile.id, name);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["food-items", couple?.id] });
+      queryClient.invalidateQueries({ queryKey: ["shopping-items"] });
     },
   });
 }

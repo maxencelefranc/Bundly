@@ -1,4 +1,4 @@
-import { computeCycleStats, type Period } from "./api";
+import { computeCycleStats, predictNextCycle, type Period } from "./api";
 
 function period(overrides: Partial<Period>): Period {
   return {
@@ -41,5 +41,34 @@ describe("computeCycleStats", () => {
 
     expect(stats.avgDuration).toBe(5);
     expect(stats.avgCycle).toBe(28);
+  });
+});
+
+describe("predictNextCycle", () => {
+  it("returns null when there is no period history", () => {
+    expect(predictNextCycle([])).toBeNull();
+  });
+
+  it("projects the next period, ovulation, and fertile window from the average cycle", () => {
+    const prediction = predictNextCycle([period({ start_date: "2026-01-01" })]);
+
+    expect(prediction).not.toBeNull();
+    expect(prediction!.nextPeriodStart).toBe("2026-01-29");
+    expect(prediction!.ovulationDate).toBe("2026-01-15");
+    expect(prediction!.fertileWindowStart).toBe("2026-01-10");
+    expect(prediction!.fertileWindowEnd).toBe("2026-01-16");
+  });
+
+  it("uses the computed average cycle length when several periods are known", () => {
+    const periods = [
+      period({ start_date: "2026-03-01" }),
+      period({ start_date: "2026-02-01" }),
+      period({ start_date: "2026-01-01" }),
+    ];
+
+    // avgCycle here is 30 days (Jan 1 -> Feb 1 = 31, Feb 1 -> Mar 1 = 28, avg 29.5 -> rounds to 30)
+    const prediction = predictNextCycle(periods);
+
+    expect(prediction!.nextPeriodStart).toBe("2026-03-31");
   });
 });

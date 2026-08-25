@@ -22,6 +22,7 @@ export default function AddTreatmentModal() {
   const [name, setName] = useState("");
   const [dosage, setDosage] = useState("");
   const [frequency, setFrequency] = useState("");
+  const [reminderTime, setReminderTime] = useState("09:00");
 
   async function handleSubmit() {
     if (!name.trim()) return;
@@ -29,6 +30,7 @@ export default function AddTreatmentModal() {
       name: name.trim(),
       dosage: dosage.trim() || null,
       frequency: frequency.trim() || null,
+      reminder_time: /^\d{2}:\d{2}$/.test(reminderTime) ? reminderTime : "09:00",
       stock: 0,
     });
     router.back();
@@ -130,6 +132,33 @@ export default function AddTreatmentModal() {
                 value={frequency}
                 onChangeText={setFrequency}
               />
+            </View>
+
+            <View>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: theme.text, marginBottom: 6 }}>
+                Heure du rappel
+              </Text>
+              <TextInput
+                style={{
+                  backgroundColor: theme.bgSecondary,
+                  borderWidth: 1,
+                  borderColor: theme.borderStrong,
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  height: 48,
+                  color: theme.text,
+                  fontSize: 16,
+                }}
+                placeholder="09:00"
+                placeholderTextColor={theme.textMuted}
+                value={reminderTime}
+                onChangeText={setReminderTime}
+                keyboardType="numbers-and-punctuation"
+                maxLength={5}
+              />
+              <Text style={{ color: theme.textMuted, fontSize: 12, marginTop: 4 }}>
+                Format : HH:mm — une notification quotidienne sera programmée
+              </Text>
             </View>
           </View>
 

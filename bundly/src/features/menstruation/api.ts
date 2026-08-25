@@ -114,3 +114,56 @@ export function computeCycleStats(periods: Period[]): { avgCycle: number; avgDur
 
   return { avgCycle, avgDuration };
 }
+
+export interface CyclePrediction {
+  nextPeriodStart: string;
+  daysUntilNextPeriod: number;
+  ovulationDate: string;
+  fertileWindowStart: string;
+  fertileWindowEnd: string;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// `new Date("YYYY-MM-DD")` parses as UTC midnight; adding whole days in
+// milliseconds keeps every date UTC-anchored so the result never drifts by a
+// day depending on the device's local timezone (unlike `Date#setDate`, which
+// operates in local time).
+function addDays(base: Date, days: number): Date {
+  return new Date(base.getTime() + days * DAY_MS);
+}
+
+function toISODate(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
+/**
+ * Estimates the next period start and fertile window from the most recent
+ * period start date plus the average cycle length. Ovulation is approximated
+ * at 14 days before the next period (luteal phase length is far more stable
+ * across cycles than the follicular phase), with a 5-day fertile window
+ * ending the day after ovulation — the standard sperm-survival heuristic.
+ */
+export function predictNextCycle(periods: Period[]): CyclePrediction | null {
+  if (periods.length === 0) return null;
+
+  const { avgCycle } = computeCycleStats(periods);
+  const lastStart = new Date(periods[0].start_date);
+
+  const nextPeriod = addDays(lastStart, avgCycle);
+  const ovulation = addDays(nextPeriod, -14);
+  const fertileStart = addDays(ovulation, -5);
+  const fertileEnd = addDays(ovulation, 1);
+
+  const today = new Date();
+  const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const daysUntilNextPeriod = Math.round((nextPeriod.getTime() - todayUTC) / DAY_MS);
+
+  return {
+    nextPeriodStart: toISODate(nextPeriod),
+    daysUntilNextPeriod,
+    ovulationDate: toISODate(ovulation),
+    fertileWindowStart: toISODate(fertileStart),
+    fertileWindowEnd: toISODate(fertileEnd),
+  };
+}

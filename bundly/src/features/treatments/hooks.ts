@@ -8,6 +8,7 @@ import {
   type Treatment,
 } from "./api";
 import { useAppStore } from "@/stores/appStore";
+import { scheduleTreatmentReminder, cancelTreatmentReminder } from "@/lib/notifications";
 
 export function useTreatments() {
   const profile = useAppStore((s) => s.profile);
@@ -32,8 +33,11 @@ export function useAddTreatment() {
   const profile = useAppStore((s) => s.profile);
 
   return useMutation({
-    mutationFn: (treatment: Pick<Treatment, "name"> & Partial<Treatment>) =>
-      addTreatment(profile!.id, treatment),
+    mutationFn: async (treatment: Pick<Treatment, "name"> & Partial<Treatment>) => {
+      const result = await addTreatment(profile!.id, treatment);
+      scheduleTreatmentReminder(result.id, result.name, result.reminder_time).catch(() => {});
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["treatments", profile?.id] });
     },
@@ -45,7 +49,10 @@ export function useDeleteTreatment() {
   const profile = useAppStore((s) => s.profile);
 
   return useMutation({
-    mutationFn: deleteTreatment,
+    mutationFn: async (id: string) => {
+      await deleteTreatment(id);
+      await cancelTreatmentReminder(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["treatments", profile?.id] });
     },

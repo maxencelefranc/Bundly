@@ -9,7 +9,12 @@ import {
   useEndPeriod,
   useAddSymptom,
 } from "@/features/menstruation/hooks";
-import { SYMPTOMS, computeCycleStats, type Period } from "@/features/menstruation/api";
+import {
+  SYMPTOMS,
+  computeCycleStats,
+  predictNextCycle,
+  type Period,
+} from "@/features/menstruation/api";
 
 function SymptomPicker({ periodId }: { periodId: string }) {
   const theme = useTheme();
@@ -178,6 +183,7 @@ export default function MenstruationScreen() {
   const startPeriod = useStartPeriod();
   const activePeriod = periods?.find((p) => !p.end_date);
   const stats = computeCycleStats(periods ?? []);
+  const prediction = !activePeriod ? predictNextCycle(periods ?? []) : null;
 
   return (
     <ScreenLayout
@@ -225,6 +231,60 @@ export default function MenstruationScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Prédiction */}
+      {prediction && (
+        <View
+          style={{
+            backgroundColor: theme.bgCard,
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 16,
+            borderWidth: 0.5,
+            borderColor: theme.border,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <Ionicons name="sparkles-outline" size={16} color="#EC4899" />
+            <Text style={{ fontSize: 13, fontWeight: "600", color: theme.text }}>
+              Estimation basée sur ton cycle moyen
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, color: theme.text, marginBottom: 4 }}>
+            Prochaines règles :{" "}
+            <Text style={{ fontWeight: "700", color: "#EC4899" }}>
+              {new Date(prediction.nextPeriodStart).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "long",
+              })}
+            </Text>{" "}
+            <Text style={{ color: theme.textSecondary }}>
+              (
+              {prediction.daysUntilNextPeriod > 0
+                ? `dans ${prediction.daysUntilNextPeriod}j`
+                : "en retard"}
+              )
+            </Text>
+          </Text>
+          <Text style={{ fontSize: 14, color: theme.text }}>
+            Fenêtre de fertilité :{" "}
+            <Text style={{ fontWeight: "700", color: "#A78BFA" }}>
+              {new Date(prediction.fertileWindowStart).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "short",
+              })}{" "}
+              →{" "}
+              {new Date(prediction.fertileWindowEnd).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "short",
+              })}
+            </Text>
+          </Text>
+          <Text style={{ fontSize: 11, color: theme.textMuted, marginTop: 8 }}>
+            Estimation indicative, pas une méthode contraceptive.
+          </Text>
+        </View>
+      )}
 
       {/* Bouton démarrer */}
       {!activePeriod && (

@@ -93,7 +93,7 @@ function FoodCard({ item }: { item: FoodItem }) {
       </View>
       {status !== "expired" && (
         <TouchableOpacity
-          onPress={() => consume.mutate(item.id)}
+          onPress={() => consume.mutate({ id: item.id, name: item.name })}
           activeOpacity={0.8}
           style={{
             height: 40,
