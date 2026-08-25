@@ -1,7 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ScreenLayout } from "@/components/shared/ScreenLayout";
+import {
+  MonthCalendar,
+  localDateKey,
+  addDaysStr,
+  eachDayKey,
+  type CalendarMarker,
+} from "@/components/shared/MonthCalendar";
 import { useTheme } from "@/stores/themeStore";
 import {
   usePeriods,
@@ -184,6 +191,31 @@ export default function MenstruationScreen() {
   const activePeriod = periods?.find((p) => !p.end_date);
   const stats = computeCycleStats(periods ?? []);
   const prediction = !activePeriod ? predictNextCycle(periods ?? []) : null;
+  const [month, setMonth] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const markersByDate = useMemo(() => {
+    const map: Record<string, CalendarMarker[]> = {};
+    const mark = (key: string, color: string) => (map[key] ??= []).push({ color });
+
+    for (const p of periods ?? []) {
+      const end = p.end_date ?? localDateKey(new Date());
+      for (const key of eachDayKey(p.start_date, end)) mark(key, "#EC4899");
+    }
+
+    if (prediction) {
+      const predictedEnd = addDaysStr(
+        prediction.nextPeriodStart,
+        Math.max(stats.avgDuration - 1, 0)
+      );
+      for (const key of eachDayKey(prediction.nextPeriodStart, predictedEnd)) mark(key, "#F9A8D4");
+      for (const key of eachDayKey(prediction.fertileWindowStart, prediction.fertileWindowEnd)) {
+        mark(key, "#A78BFA");
+      }
+    }
+
+    return map;
+  }, [periods, prediction, stats.avgDuration]);
 
   return (
     <ScreenLayout
@@ -229,6 +261,31 @@ export default function MenstruationScreen() {
           <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
             Durée moyenne
           </Text>
+        </View>
+      </View>
+
+      {/* Calendrier */}
+      <View style={{ marginBottom: 8 }}>
+        <MonthCalendar
+          month={month}
+          onMonthChange={setMonth}
+          markersByDate={markersByDate}
+          selectedDate={selectedDate}
+          onSelectDate={(d) => setSelectedDate(d === selectedDate ? null : d)}
+        />
+      </View>
+      <View style={{ flexDirection: "row", gap: 14, marginBottom: 16, paddingHorizontal: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#EC4899" }} />
+          <Text style={{ fontSize: 11, color: theme.textSecondary }}>Règles</Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#F9A8D4" }} />
+          <Text style={{ fontSize: 11, color: theme.textSecondary }}>Prévu</Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#A78BFA" }} />
+          <Text style={{ fontSize: 11, color: theme.textSecondary }}>Fenêtre fertile</Text>
         </View>
       </View>
 

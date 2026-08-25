@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { ScrollView, View, Text, TouchableOpacity, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -14,7 +15,18 @@ import { useAppointments } from "@/features/calendar/hooks";
 import { useTreatments, useTodayLogs } from "@/features/treatments/hooks";
 import { useDates } from "@/features/dates/hooks";
 import { daysUntil } from "@/features/dates/api";
+import { useFoodItems } from "@/features/anti-waste/hooks";
+import { useSubscriptions } from "@/features/subscriptions/hooks";
+import { usePeriods } from "@/features/menstruation/hooks";
+import { predictNextCycle } from "@/features/menstruation/api";
 import { fetchRecentActivity } from "@/lib/supabase";
+import {
+  MonthCalendar,
+  localDateKey,
+  dateKey,
+  eachDayKey,
+  type CalendarMarker,
+} from "@/components/shared/MonthCalendar";
 
 function getGreeting(name: string): string {
   const h = new Date().getHours();
@@ -89,6 +101,9 @@ export default function HomeScreen() {
   const { data: treatments } = useTreatments();
   const { data: takenIds } = useTodayLogs(treatments?.map((t) => t.id) ?? []);
   const { data: dates } = useDates();
+  const { data: foodItems } = useFoodItems();
+  const { data: subscriptions } = useSubscriptions();
+  const { data: periods } = usePeriods();
   const { data: activity } = useQuery({
     queryKey: ["activity", couple?.id],
     queryFn: () => fetchRecentActivity(couple!.id, 10),
@@ -107,6 +122,90 @@ export default function HomeScreen() {
       return day >= 0 && day <= 14;
     }) ?? [];
   const partnerActivity = activity?.filter((a: any) => a.profile_id !== profile?.id) ?? [];
+
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<string | null>(null);
+
+  const { markersByDate, eventsByDate } = useMemo(() => {
+    const markers: Record<string, CalendarMarker[]> = {};
+    const events: Record<string, { label: string; color: string; icon: string; route: string }[]> =
+      {};
+    const add = (day: string, label: string, color: string, icon: string, route: string) => {
+      (markers[day] ??= []).push({ color });
+      (events[day] ??= []).push({ label, color, icon, route });
+    };
+
+    const year = calendarMonth.getFullYear();
+    const month1to12 = calendarMonth.getMonth() + 1;
+
+    for (const a of appointments ?? []) {
+      add(
+        localDateKey(new Date(a.start_time)),
+        a.title,
+        theme.calendar,
+        "calendar-outline",
+        "/(tabs)/calendar"
+      );
+    }
+
+    for (const item of dates ?? []) {
+      const [y, m, d] = item.date.split("-").map(Number);
+      if (item.recurring ? m === month1to12 : y === year && m === month1to12) {
+        add(dateKey(year, m, d), item.title, theme.dates, "gift-outline", "/(tabs)/dates");
+      }
+    }
+
+    for (const s of subscriptions ?? []) {
+      if (!s.renewal_date) continue;
+      const [y, m, d] = s.renewal_date.split("-").map(Number);
+      add(
+        dateKey(y, m, d),
+        `${s.name} · renouvellement`,
+        theme.subs,
+        "card-outline",
+        "/(tabs)/subs"
+      );
+    }
+
+    for (const item of foodItems ?? []) {
+      if (!item.expiry_date) continue;
+      const [y, m, d] = item.expiry_date.split("-").map(Number);
+      add(
+        dateKey(y, m, d),
+        `${item.name} · expire`,
+        theme.antiwaste,
+        "leaf-outline",
+        "/(tabs)/anti-waste"
+      );
+    }
+
+    const activePeriod = periods?.find((p) => !p.end_date);
+    const prediction = !activePeriod ? predictNextCycle(periods ?? []) : null;
+    if (prediction) {
+      add(
+        prediction.nextPeriodStart,
+        "Règles estimées",
+        theme.menstruation,
+        "heart-outline",
+        "/(tabs)/menstruation"
+      );
+      for (const day of eachDayKey(prediction.fertileWindowStart, prediction.fertileWindowEnd)) {
+        add(day, "Fenêtre fertile", "#A78BFA", "heart-outline", "/(tabs)/menstruation");
+      }
+    }
+    for (const p of periods ?? []) {
+      const end = p.end_date ?? localDateKey(new Date());
+      for (const day of eachDayKey(p.start_date, end)) {
+        add(day, "Règles", theme.menstruation, "heart-outline", "/(tabs)/menstruation");
+      }
+    }
+
+    return { markersByDate: markers, eventsByDate: events };
+  }, [appointments, dates, subscriptions, foodItems, periods, calendarMonth, theme]);
+
+  const todayKeyForAgenda = localDateKey(new Date());
+  const agendaDate = calendarSelectedDate ?? todayKeyForAgenda;
+  const agendaEvents = eventsByDate[agendaDate] ?? [];
 
   const currentLevel = COUPLE_LEVELS.find((l) => l.level === coupleXP?.level) ?? COUPLE_LEVELS[0];
   const totalXP = coupleXP?.total_xp ?? 0;
@@ -516,6 +615,71 @@ export default function HomeScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+
+          {/* ── Calendrier ── */}
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: "600",
+              color: theme.textMuted,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            Calendrier
+          </Text>
+          <View style={{ marginBottom: 12 }}>
+            <MonthCalendar
+              month={calendarMonth}
+              onMonthChange={setCalendarMonth}
+              markersByDate={markersByDate}
+              selectedDate={calendarSelectedDate}
+              onSelectDate={(d) => setCalendarSelectedDate(d === calendarSelectedDate ? null : d)}
+            />
+          </View>
+          <View
+            style={{
+              backgroundColor: theme.bgCard,
+              borderRadius: 16,
+              padding: 14,
+              marginBottom: 18,
+              borderWidth: 0.5,
+              borderColor: theme.border,
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: "600", color: theme.text, marginBottom: 8 }}>
+              {calendarSelectedDate
+                ? new Date(agendaDate).toLocaleDateString("fr-FR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })
+                : "Aujourd'hui"}
+            </Text>
+            {agendaEvents.length === 0 ? (
+              <Text style={{ fontSize: 13, color: theme.textSecondary }}>Rien de prévu</Text>
+            ) : (
+              agendaEvents.map((e, i) => (
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => router.push(e.route as any)}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    paddingVertical: 6,
+                  }}
+                >
+                  <Ionicons name={e.icon as any} size={14} color={e.color} />
+                  <Text style={{ fontSize: 13, color: theme.text, flex: 1 }} numberOfLines={1}>
+                    {e.label}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
 
           {/* ── Semaine ── */}

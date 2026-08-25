@@ -5,6 +5,7 @@ import {
   deleteTreatment,
   markTaken,
   fetchTodayLogs,
+  fetchLogsInRange,
   type Treatment,
 } from "./api";
 import { useAppStore } from "@/stores/appStore";
@@ -24,6 +25,17 @@ export function useTodayLogs(treatmentIds: string[]) {
   return useQuery({
     queryKey: ["treatment-logs-today", treatmentIds],
     queryFn: () => fetchTodayLogs(treatmentIds),
+    enabled: treatmentIds.length > 0,
+  });
+}
+
+export function useMonthLogs(treatmentIds: string[], monthStart: Date, monthEnd: Date) {
+  const startISO = monthStart.toISOString();
+  const endISO = monthEnd.toISOString();
+
+  return useQuery({
+    queryKey: ["treatment-logs-range", treatmentIds, startISO, endISO],
+    queryFn: () => fetchLogsInRange(treatmentIds, startISO, endISO),
     enabled: treatmentIds.length > 0,
   });
 }
@@ -69,8 +81,9 @@ export function useMarkTaken() {
       await awardXP("treatment_taken", "treatments");
       return result;
     },
-    onSuccess: (_, treatmentId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["treatment-logs-today"] });
+      queryClient.invalidateQueries({ queryKey: ["treatment-logs-range"] });
     },
   });
 }

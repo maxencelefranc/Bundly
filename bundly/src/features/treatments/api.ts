@@ -86,3 +86,21 @@ export async function fetchTodayLogs(treatmentIds: string[]): Promise<string[]> 
 
   return data?.map((d) => d.treatment_id) ?? [];
 }
+
+export async function fetchLogsInRange(
+  treatmentIds: string[],
+  startISO: string,
+  endISO: string
+): Promise<TreatmentLog[]> {
+  if (treatmentIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("treatment_logs")
+    .select("*")
+    .in("treatment_id", treatmentIds)
+    .gte("taken_at", startISO)
+    .lt("taken_at", endISO);
+
+  if (error) throw error;
+  return data ?? [];
+}

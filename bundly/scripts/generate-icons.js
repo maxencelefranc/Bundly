@@ -74,6 +74,30 @@ function svgGlyphOnly({ size = 1024, scale = 15 } = {}) {
   </svg>`;
 }
 
+// The app icon (gradient tile + hearts) with rounded corners baked in, on a
+// transparent canvas — used for splash screens and in-app loading states,
+// where nothing else applies an OS icon mask for us. Matches what people
+// actually see as the "Bundly icon" on their home screen, instead of the
+// bare white glyph the splash used before.
+function svgRoundedTile() {
+  return `<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${BRAND_START}" />
+        <stop offset="55%" stop-color="${BRAND_MID}" />
+        <stop offset="100%" stop-color="${BRAND_END}" />
+      </linearGradient>
+      <clipPath id="tile">
+        <rect width="1024" height="1024" rx="224" ry="224" />
+      </clipPath>
+    </defs>
+    <g clip-path="url(#tile)">
+      <rect width="1024" height="1024" fill="url(#bg)" />
+      ${heartsGroup({ scale: 16.5 })}
+    </g>
+  </svg>`;
+}
+
 async function render(svg, outFile, { width, height } = {}) {
   let img = sharp(Buffer.from(svg));
   if (width && height) img = img.resize(width, height);
@@ -87,10 +111,7 @@ async function main() {
   await render(svgForegroundGlyph(), path.join(OUT, "android-icon-foreground.png"));
   await render(svgForegroundGlyph({ mono: true }), path.join(OUT, "android-icon-monochrome.png"));
   await render(svgIconFull(), path.join(OUT, "favicon.png"), { width: 196, height: 196 });
-  await render(svgGlyphOnly({ scale: 15 }), path.join(OUT, "splash-icon.png"), {
-    width: 512,
-    height: 512,
-  });
+  await render(svgRoundedTile(), path.join(OUT, "splash-icon.png"), { width: 512, height: 512 });
   await render(svgGlyphOnly({ scale: 15 }), path.join(OUT, "notification-icon.png"), {
     width: 256,
     height: 256,

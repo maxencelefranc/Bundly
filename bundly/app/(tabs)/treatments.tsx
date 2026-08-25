@@ -1,11 +1,18 @@
+import { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ScreenLayout } from "@/components/shared/ScreenLayout";
+import {
+  MonthCalendar,
+  localDateKey,
+  type CalendarMarker,
+} from "@/components/shared/MonthCalendar";
 import { useTheme } from "@/stores/themeStore";
 import {
   useTreatments,
   useTodayLogs,
+  useMonthLogs,
   useMarkTaken,
   useDeleteTreatment,
 } from "@/features/treatments/hooks";
@@ -88,8 +95,34 @@ function TreatmentCard({ treatment, takenToday }: { treatment: Treatment; takenT
 export default function TreatmentsScreen() {
   const theme = useTheme();
   const { data: treatments, isLoading } = useTreatments();
-  const ids = treatments?.map((t) => t.id) ?? [];
+  const ids = useMemo(() => treatments?.map((t) => t.id) ?? [], [treatments]);
   const { data: takenIds } = useTodayLogs(ids);
+
+  const [month, setMonth] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const monthStart = useMemo(() => new Date(month.getFullYear(), month.getMonth(), 1), [month]);
+  const monthEnd = useMemo(() => new Date(month.getFullYear(), month.getMonth() + 1, 1), [month]);
+  const { data: monthLogs } = useMonthLogs(ids, monthStart, monthEnd);
+
+  const markersByDate = useMemo(() => {
+    const map: Record<string, CalendarMarker[]> = {};
+    for (const log of monthLogs ?? []) {
+      const key = localDateKey(new Date(log.taken_at));
+      (map[key] ??= []).push({ color: "#06B6D4" });
+    }
+    return map;
+  }, [monthLogs]);
+
+  const treatmentNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const t of treatments ?? []) map[t.id] = t.name;
+    return map;
+  }, [treatments]);
+
+  const dayLogs = selectedDate
+    ? (monthLogs ?? []).filter((log) => localDateKey(new Date(log.taken_at)) === selectedDate)
+    : [];
 
   return (
     <ScreenLayout
@@ -99,6 +132,63 @@ export default function TreatmentsScreen() {
       icon="medical-outline"
       onAdd={() => router.push("/(modals)/add-treatment")}
     >
+      {treatments && treatments.length > 0 && (
+        <>
+          <View style={{ marginBottom: 12 }}>
+            <MonthCalendar
+              month={month}
+              onMonthChange={setMonth}
+              markersByDate={markersByDate}
+              selectedDate={selectedDate}
+              onSelectDate={(d) => setSelectedDate(d === selectedDate ? null : d)}
+            />
+          </View>
+
+          {selectedDate && (
+            <View
+              style={{
+                backgroundColor: theme.bgCard,
+                borderRadius: 16,
+                padding: 14,
+                marginBottom: 16,
+                borderWidth: 0.5,
+                borderColor: theme.border,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: theme.text, marginBottom: 6 }}>
+                {new Date(selectedDate).toLocaleDateString("fr-FR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </Text>
+              {dayLogs.length === 0 ? (
+                <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                  Rien de pris ce jour-là
+                </Text>
+              ) : (
+                dayLogs.map((log) => (
+                  <View
+                    key={log.id}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      paddingVertical: 3,
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle" size={14} color="#06B6D4" />
+                    <Text style={{ fontSize: 13, color: theme.text }}>
+                      {treatmentNameById[log.treatment_id] ?? "Traitement"}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
+        </>
+      )}
+
       {isLoading ? (
         <ActivityIndicator color="#06B6D4" style={{ marginTop: 40 }} />
       ) : treatments?.length === 0 ? (

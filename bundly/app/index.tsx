@@ -1,7 +1,7 @@
 import { Redirect } from "expo-router";
 import { useAppStore } from "@/stores/appStore";
 import { useTheme } from "@/stores/themeStore";
-import { View, ActivityIndicator } from "react-native";
+import { View, Image, ActivityIndicator } from "react-native";
 
 export default function Index() {
   const { profile, couple, isLoading } = useAppStore();
@@ -15,9 +15,15 @@ export default function Index() {
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: theme.bg,
+          gap: 20,
         }}
       >
-        <ActivityIndicator size="large" color="#FF6B9D" />
+        <Image
+          source={require("../assets/splash-icon.png")}
+          style={{ width: 88, height: 88 }}
+          resizeMode="contain"
+        />
+        <ActivityIndicator size="small" color={theme.brand} />
       </View>
     );
   }

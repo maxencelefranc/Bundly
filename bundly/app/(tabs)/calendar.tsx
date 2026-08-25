@@ -1,7 +1,13 @@
+import { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ScreenLayout } from "@/components/shared/ScreenLayout";
+import {
+  MonthCalendar,
+  localDateKey,
+  type CalendarMarker,
+} from "@/components/shared/MonthCalendar";
 import { useTheme } from "@/stores/themeStore";
 import { useAppointments, useDeleteAppointment } from "@/features/calendar/hooks";
 import type { Appointment } from "@/features/calendar/api";
@@ -83,39 +89,71 @@ function AppointmentCard({ appt }: { appt: Appointment }) {
 export default function CalendarScreen() {
   const theme = useTheme();
   const { data: appointments, isLoading } = useAppointments();
-  const upcoming = appointments?.filter((a) => new Date(a.start_time) >= new Date()) ?? [];
-  const past = appointments?.filter((a) => new Date(a.start_time) < new Date()) ?? [];
+  const [month, setMonth] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const markersByDate = useMemo(() => {
+    const map: Record<string, CalendarMarker[]> = {};
+    for (const a of appointments ?? []) {
+      const key = localDateKey(new Date(a.start_time));
+      (map[key] ??= []).push({ color: "#378ADD" });
+    }
+    return map;
+  }, [appointments]);
+
+  const visible = selectedDate
+    ? (appointments ?? []).filter((a) => localDateKey(new Date(a.start_time)) === selectedDate)
+    : (appointments ?? []);
+  const upcoming = visible.filter((a) => new Date(a.start_time) >= new Date());
+  const past = visible.filter((a) => new Date(a.start_time) < new Date());
 
   return (
     <ScreenLayout
       title="Rendez-vous"
-      subtitle={`${upcoming.length} à venir`}
+      subtitle={`${(appointments ?? []).filter((a) => new Date(a.start_time) >= new Date()).length} à venir`}
       color="#378ADD"
       icon="calendar-outline"
       onAdd={() => router.push("/(modals)/add-appointment")}
     >
+      <View style={{ marginBottom: 16 }}>
+        <MonthCalendar
+          month={month}
+          onMonthChange={setMonth}
+          markersByDate={markersByDate}
+          selectedDate={selectedDate}
+          onSelectDate={(d) => setSelectedDate(d === selectedDate ? null : d)}
+        />
+      </View>
+
+      {selectedDate && (
+        <TouchableOpacity
+          onPress={() => setSelectedDate(null)}
+          activeOpacity={0.7}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            alignSelf: "flex-start",
+            backgroundColor: theme.brandLight,
+            borderRadius: 20,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            marginBottom: 12,
+          }}
+        >
+          <Text style={{ fontSize: 12, color: theme.brand, fontWeight: "500" }}>
+            {new Date(selectedDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+          </Text>
+          <Ionicons name="close-circle" size={14} color={theme.brand} />
+        </TouchableOpacity>
+      )}
+
       {isLoading ? (
         <ActivityIndicator color="#378ADD" style={{ marginTop: 40 }} />
-      ) : appointments?.length === 0 ? (
-        <View style={{ alignItems: "center", marginTop: 60 }}>
-          <View
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 20,
-              backgroundColor: "#EFF6FF",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 12,
-            }}
-          >
-            <Ionicons name="calendar-outline" size={32} color="#378ADD" />
-          </View>
-          <Text style={{ fontSize: 16, fontWeight: "600", color: theme.text, marginBottom: 4 }}>
-            Aucun rendez-vous
-          </Text>
+      ) : visible.length === 0 ? (
+        <View style={{ alignItems: "center", marginTop: 40 }}>
           <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-            Planifiez votre premier rendez-vous
+            {selectedDate ? "Aucun rendez-vous ce jour-là" : "Planifiez votre premier rendez-vous"}
           </Text>
         </View>
       ) : (

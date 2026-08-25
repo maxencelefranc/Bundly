@@ -1,7 +1,9 @@
+import { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ScreenLayout } from "@/components/shared/ScreenLayout";
+import { MonthCalendar, dateKey, type CalendarMarker } from "@/components/shared/MonthCalendar";
 import { useTheme } from "@/stores/themeStore";
 import { useSubscriptions, useDeleteSubscription } from "@/features/subscriptions/hooks";
 import {
@@ -72,6 +74,22 @@ export default function SubsScreen() {
   const theme = useTheme();
   const { data: subs, isLoading } = useSubscriptions();
   const total = totalMonthly(subs ?? []);
+  const [month, setMonth] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const markersByDate = useMemo(() => {
+    const map: Record<string, CalendarMarker[]> = {};
+    for (const s of subs ?? []) {
+      if (!s.renewal_date) continue;
+      const [y, m, d] = s.renewal_date.split("-").map(Number);
+      (map[dateKey(y, m, d)] ??= []).push({ color: "#8B5CF6" });
+    }
+    return map;
+  }, [subs]);
+
+  const visible = selectedDate
+    ? (subs ?? []).filter((s) => s.renewal_date?.slice(0, 10) === selectedDate)
+    : (subs ?? []);
 
   return (
     <ScreenLayout
@@ -81,7 +99,40 @@ export default function SubsScreen() {
       icon="card-outline"
       onAdd={() => router.push("/(modals)/add-subscription")}
     >
-      {total > 0 && (
+      <View style={{ marginBottom: 16 }}>
+        <MonthCalendar
+          month={month}
+          onMonthChange={setMonth}
+          markersByDate={markersByDate}
+          selectedDate={selectedDate}
+          onSelectDate={(d) => setSelectedDate(d === selectedDate ? null : d)}
+        />
+      </View>
+
+      {selectedDate && (
+        <TouchableOpacity
+          onPress={() => setSelectedDate(null)}
+          activeOpacity={0.7}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            alignSelf: "flex-start",
+            backgroundColor: "#F5F3FF",
+            borderRadius: 20,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            marginBottom: 12,
+          }}
+        >
+          <Text style={{ fontSize: 12, color: "#8B5CF6", fontWeight: "500" }}>
+            {new Date(selectedDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+          </Text>
+          <Ionicons name="close-circle" size={14} color="#8B5CF6" />
+        </TouchableOpacity>
+      )}
+
+      {!selectedDate && total > 0 && (
         <View
           style={{
             backgroundColor: theme.bgCard,
@@ -103,30 +154,14 @@ export default function SubsScreen() {
       )}
       {isLoading ? (
         <ActivityIndicator color="#8B5CF6" style={{ marginTop: 40 }} />
-      ) : subs?.length === 0 ? (
-        <View style={{ alignItems: "center", marginTop: 60 }}>
-          <View
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 20,
-              backgroundColor: "#F5F3FF",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 12,
-            }}
-          >
-            <Ionicons name="card-outline" size={32} color="#8B5CF6" />
-          </View>
-          <Text style={{ fontSize: 16, fontWeight: "600", color: theme.text, marginBottom: 4 }}>
-            Aucun abonnement
-          </Text>
+      ) : visible.length === 0 ? (
+        <View style={{ alignItems: "center", marginTop: 40 }}>
           <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-            Suivez vos dépenses récurrentes
+            {selectedDate ? "Aucun renouvellement ce jour-là" : "Suivez vos dépenses récurrentes"}
           </Text>
         </View>
       ) : (
-        subs?.map((s) => <SubCard key={s.id} sub={s} />)
+        visible.map((s) => <SubCard key={s.id} sub={s} />)
       )}
     </ScreenLayout>
   );

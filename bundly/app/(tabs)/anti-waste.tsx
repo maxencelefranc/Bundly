@@ -1,7 +1,9 @@
+import { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ScreenLayout } from "@/components/shared/ScreenLayout";
+import { MonthCalendar, dateKey, type CalendarMarker } from "@/components/shared/MonthCalendar";
 import { useTheme } from "@/stores/themeStore";
 import { useFoodItems, useMarkConsumed, useDeleteFoodItem } from "@/features/anti-waste/hooks";
 import { computeStatus, type FoodItem } from "@/features/anti-waste/api";
@@ -117,40 +119,77 @@ function FoodCard({ item }: { item: FoodItem }) {
 export default function AntiWasteScreen() {
   const theme = useTheme();
   const { data: items, isLoading } = useFoodItems();
-  const expired = items?.filter((i) => computeStatus(i.expiry_date) === "expired") ?? [];
-  const warning = items?.filter((i) => computeStatus(i.expiry_date) === "warning") ?? [];
-  const ok = items?.filter((i) => computeStatus(i.expiry_date) === "ok") ?? [];
+  const [month, setMonth] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const markersByDate = useMemo(() => {
+    const map: Record<string, CalendarMarker[]> = {};
+    for (const item of items ?? []) {
+      if (!item.expiry_date) continue;
+      const [y, m, d] = item.expiry_date.split("-").map(Number);
+      (map[dateKey(y, m, d)] ??= []).push({
+        color: STATUS_CONFIG[computeStatus(item.expiry_date)].color,
+      });
+    }
+    return map;
+  }, [items]);
+
+  const base = selectedDate
+    ? (items ?? []).filter((i) => i.expiry_date?.slice(0, 10) === selectedDate)
+    : (items ?? []);
+  const expired = base.filter((i) => computeStatus(i.expiry_date) === "expired");
+  const warning = base.filter((i) => computeStatus(i.expiry_date) === "warning");
+  const ok = base.filter((i) => computeStatus(i.expiry_date) === "ok");
 
   return (
     <ScreenLayout
       title="Anti-gaspillage"
-      subtitle={`${expired.length > 0 ? `${expired.length} expiré · ` : ""}${warning.length > 0 ? `${warning.length} bientôt · ` : ""}${ok.length} OK`}
+      subtitle={`${(items ?? []).filter((i) => computeStatus(i.expiry_date) === "expired").length > 0 ? `${(items ?? []).filter((i) => computeStatus(i.expiry_date) === "expired").length} expiré · ` : ""}${(items ?? []).length} suivis`}
       color="#EF4444"
       icon="leaf-outline"
       onAdd={() => router.push("/(modals)/add-food")}
     >
+      <View style={{ marginBottom: 16 }}>
+        <MonthCalendar
+          month={month}
+          onMonthChange={setMonth}
+          markersByDate={markersByDate}
+          selectedDate={selectedDate}
+          onSelectDate={(d) => setSelectedDate(d === selectedDate ? null : d)}
+        />
+      </View>
+
+      {selectedDate && (
+        <TouchableOpacity
+          onPress={() => setSelectedDate(null)}
+          activeOpacity={0.7}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            alignSelf: "flex-start",
+            backgroundColor: "#FEF2F2",
+            borderRadius: 20,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            marginBottom: 12,
+          }}
+        >
+          <Text style={{ fontSize: 12, color: "#EF4444", fontWeight: "500" }}>
+            {new Date(selectedDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+          </Text>
+          <Ionicons name="close-circle" size={14} color="#EF4444" />
+        </TouchableOpacity>
+      )}
+
       {isLoading ? (
         <ActivityIndicator color="#EF4444" style={{ marginTop: 40 }} />
-      ) : items?.length === 0 ? (
-        <View style={{ alignItems: "center", marginTop: 60 }}>
-          <View
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 20,
-              backgroundColor: "#FEF2F2",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 12,
-            }}
-          >
-            <Ionicons name="leaf-outline" size={32} color="#EF4444" />
-          </View>
-          <Text style={{ fontSize: 16, fontWeight: "600", color: theme.text, marginBottom: 4 }}>
-            Aucun aliment
-          </Text>
+      ) : base.length === 0 ? (
+        <View style={{ alignItems: "center", marginTop: 40 }}>
           <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-            Ajoutez vos aliments pour éviter le gaspillage
+            {selectedDate
+              ? "Rien n'expire ce jour-là"
+              : "Ajoutez vos aliments pour éviter le gaspillage"}
           </Text>
         </View>
       ) : (

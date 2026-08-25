@@ -4,9 +4,7 @@ export default function ModalsLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, presentation: "modal" }}>
       <Stack.Screen name="add-task" />
-      <Stack.Screen name="add-item" />
       <Stack.Screen name="add-emotion" />
-      <Stack.Screen name="add-photo" />
       <Stack.Screen name="add-appointment" />
       <Stack.Screen name="add-food" />
       <Stack.Screen name="add-date" />
